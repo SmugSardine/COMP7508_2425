@@ -45,7 +45,7 @@ class MetaData:
         return path, path_name, path1, path2
 
 
-def inverse_kinematics(meta_data, global_joint_positions, global_joint_orientations, target_pose, method='ccd'):
+def inverse_kinematics(meta_data, global_joint_positions, global_joint_orientations, target_pose,iteration_num, method='ccd'):
     path, path_name, path1, path2 = meta_data.get_path_from_root_to_end()
 
     '''
@@ -62,7 +62,7 @@ def inverse_kinematics(meta_data, global_joint_positions, global_joint_orientati
 
     # Feel free to implement any other IK methods, bonus will be given
     if method == 'ccd':
-        iteration_num = 20
+        # iteration_num = 20 # STUDENT NOTE: iteration_num is parameterised to ease testing
         end_joint_name = meta_data.end_joint
         end_idx = path_name.index(end_joint_name)
         for _ in range(iteration_num):
@@ -91,14 +91,15 @@ def inverse_kinematics(meta_data, global_joint_positions, global_joint_orientati
                 '''
                 
                 ########## Code Start ############
-                
-
-
-
-
-
-
-                
+                p_cur=chain_positions[current_idx]
+                p_end=chain_positions[end_idx]
+                v_end=norm(p_end-p_cur)
+                v_tgt=norm(target_pose-p_cur)
+                r=np.arccos(np.vdot(v_end,v_tgt))
+                axis=norm(np.cross(v_end,v_tgt))
+                if not np.isnan(r):
+                    chain_orientations[current_idx]=R.from_rotvec(r*axis)*chain_orientations[current_idx]
+                    
                 ########## Code End ############
 
                 chain_local_rotations = [chain_orientations[0]] + [chain_orientations[i].inv() * chain_orientations[i + 1] for i in range(len(path) - 1)]
@@ -136,7 +137,7 @@ def inverse_kinematics(meta_data, global_joint_positions, global_joint_orientati
     return global_joint_positions, global_joint_orientations
 
 
-def IK_example(viewer, target_pos, start_joint, end_joint):
+def IK_example(viewer, target_pos, start_joint, end_joint,itr=20):
     '''
     A simple example for inverse kinematics
     '''
@@ -146,13 +147,13 @@ def IK_example(viewer, target_pos, start_joint, end_joint):
     global_joint_position = viewer.get_joint_positions()
     global_joint_orientation = viewer.get_joint_orientations()
 
-    joint_position, joint_orientation = inverse_kinematics(meta_data, global_joint_position, global_joint_orientation, target_pos)
+    joint_position, joint_orientation = inverse_kinematics(meta_data, global_joint_position, global_joint_orientation, target_pos,itr)
     viewer.show_pose(joint_name, joint_position, joint_orientation)
     viewer.run()
     pass
 
 
-def IK_interactive(viewer, target_pos, start_joint, end_joint):
+def IK_interactive(viewer, target_pos, start_joint, end_joint,itr=20):
     '''
     A simple interactive example for inverse kinematics
     '''
@@ -171,7 +172,7 @@ def IK_interactive(viewer, target_pos, start_joint, end_joint):
 
         def update_func(self, viewer):
             target_pos = np.array(self.marker.getPos())
-            self.joint_position, self.joint_orientation = inverse_kinematics(meta_data, self.joint_position, self.joint_orientation, target_pos)
+            self.joint_position, self.joint_orientation = inverse_kinematics(meta_data, self.joint_position, self.joint_orientation, target_pos,itr)
             viewer.show_pose(joint_name, self.joint_position, self.joint_orientation)
     handle = UpdateHandle(marker, joint_position, joint_orientation)
     handle.update_func(viewer)
@@ -186,11 +187,13 @@ def main():
     You should try different start and end joints and different target positions
     use WASD to move the control points in interactive mode (click the scene to activate the control points)
     '''
-    IK_example(viewer, np.array([0.5, 0.75, 0.5]), 'RootJoint', 'lWrist_end')
-    # IK_example(viewer, np.array([0.5, 0.75, 0.5]), 'lToeJoint_end', 'lWrist_end')
+    # IK_example(viewer, np.array([0.5, 0.75, 0.5]), 'RootJoint', 'lWrist_end')
+    # IK_example(viewer, np.array([1., 0.5, 1.]), 'RootJoint', 'lWrist_end',1)
+    # IK_example(viewer, np.array([0., 20, 0.]), 'lToeJoint_end', 'rToeJoint_end',5)
+    # IK_example(viewer, np.array([1.5, 1.5, 1.5]), 'lToeJoint_end', 'rWrist_end')
     # IK_interactive(viewer, np.array([0.5, 0.75, 0.5]), 'RootJoint', 'lWrist_end')
     # IK_interactive(viewer, np.array([0.5, 0.75, 0.5]), 'lToeJoint_end', 'lWrist_end')
-    # IK_interactive(viewer, np.array([0.5, 0.75, 0.5]), 'rToeJoint_end', 'lWrist_end')
+    IK_interactive(viewer, np.array([1.5, 1.5, 1.5]), 'rToeJoint_end', 'lWrist_end',1)
 
 
 if __name__ == "__main__":

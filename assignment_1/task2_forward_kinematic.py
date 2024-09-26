@@ -8,7 +8,7 @@ from viewer import SimpleViewer
 def part1_show_T_pose(viewer, joint_names, joint_parents, joint_offsets):
     '''
     A function to show the T-pose of the skeleton
-    joint_names:    Shape - (J)     a list to store the name of each joit
+    joint_names:    Shape - (J)     a list to store the name of each joint
     joint_parents:  Shape - (J)     a list to store the parent index of each joint, -1 means no parent
     joint_offsets:  Shape - (J, 1, 3)  an array to store the local offset to the parent joint
     '''
@@ -34,11 +34,10 @@ def part1_show_T_pose(viewer, joint_names, joint_parents, joint_offsets):
                    else, the current joint global position = the sum of all parent joint offsets
         '''
         ########## Code Start ############
-
-
+        if parent_idx >=0: # exclude root joint
+            global_joint_position[joint_idx] =global_joint_position[parent_idx] + joint_offsets[joint_idx][0]
         ########## Code End ############
         viewer.set_joint_position_by_name(joint_names[joint_idx], global_joint_position[joint_idx])
-
     viewer.run()
 
 
@@ -86,8 +85,15 @@ def part2_forward_kinametic(viewer, joint_names, joint_parents, joint_offsets, j
                
     '''
     ########## Code Start ############
-    
-
+    for f in range(frame_number):
+        for j,p in enumerate(joint_parents):
+            if p==-1: # root joint
+                global_joint_orientations[f,j]=joint_rotations[f,j]
+                global_joint_positions[f,j]=joint_positions[f,j]
+            else:
+                global_joint_orientations[f,j]=(R.from_quat(global_joint_orientations[f,p])*R.from_quat(joint_rotations[f,j])).as_quat() # Qi = Qi-1 * Ri
+                global_joint_positions[f,j]=global_joint_positions[f,p]+R.from_quat(global_joint_orientations[f,p]).apply(joint_positions[f,j]) # Pi = Pi-1 + Qi-1 * Li-1
+                
     ########## Code End ############
     if not show_animation:
         show_frame_idx = 0
@@ -128,10 +134,10 @@ def main():
     _, local_joint_positions, local_joint_rotations = bvh_reader.load_motion_data(bvh_file_path)
 
     # part 1
-    part1_show_T_pose(viewer, joint_names, joint_parents, joint_offsets)
+    # part1_show_T_pose(viewer, joint_names, joint_parents, joint_offsets)
 
     # part 2
-    # part2_forward_kinametic(viewer, joint_names, joint_parents, joint_offsets, local_joint_positions, local_joint_rotations, show_animation=True)
+    part2_forward_kinametic(viewer, joint_names, joint_parents, joint_offsets, local_joint_positions, local_joint_rotations, show_animation=True)
 
 
 if __name__ == "__main__":
